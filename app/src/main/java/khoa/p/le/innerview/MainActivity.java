@@ -34,9 +34,13 @@ package khoa.p.le.innerview;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import java.net.URI;
+
+import android.content.Intent;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.v4.util.Pair;
 import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -45,6 +49,8 @@ import android.widget.EditText;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonDeserializer;
 import com.microsoft.bing.speech.SpeechClientStatus;
 import com.microsoft.cognitiveservices.speechrecognition.DataRecognitionClient;
 import com.microsoft.cognitiveservices.speechrecognition.ISpeechRecognitionServerEvents;
@@ -54,15 +60,24 @@ import com.microsoft.cognitiveservices.speechrecognition.RecognitionStatus;
 import com.microsoft.cognitiveservices.speechrecognition.SpeechRecognitionMode;
 import com.microsoft.cognitiveservices.speechrecognition.SpeechRecognitionServiceFactory;
 
+import org.apache.http.NameValuePair;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
+import org.apache.http.entity.StringEntityHC4;
+import org.apache.http.message.BasicNameValuePair;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.w3c.dom.Text;
 
 import java.io.InputStream;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
 import java.net.URI;
+import java.util.jar.Attributes;
+
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -83,6 +98,7 @@ public class MainActivity extends Activity implements ISpeechRecognitionServerEv
     Button _startButton;
     SpeechRecognitionMode MODE = SpeechRecognitionMode.ShortPhrase;
     public enum FinalResponseStatus { NotReceived, OK, Timeout }
+    Intent gotoResults;
 
     /**
      * Gets the primary subscription key
@@ -140,6 +156,7 @@ public class MainActivity extends Activity implements ISpeechRecognitionServerEv
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        gotoResults=new Intent(getApplicationContext(), ResultsActivity.class);
         setContentView(R.layout.activity_main);
         this._startButton = (Button) findViewById(R.id.button1);
         this.questionTextView=(TextView) findViewById(R.id.question_textView);
@@ -197,9 +214,6 @@ public class MainActivity extends Activity implements ISpeechRecognitionServerEv
             }
 
             this.SendAudioHelper((MODE == SpeechRecognitionMode.ShortPhrase) ? this.getShortWaveFile() : this.getLongWaveFile());
-            JavaSample test = new JavaSample();
-            String holder[]=new String[5];
-            test.ex
     }
 
 
@@ -215,7 +229,14 @@ public class MainActivity extends Activity implements ISpeechRecognitionServerEv
             isReceivedResponse = FinalResponseStatus.Timeout;
         }
     }
+    private findFillers(String answer){
+        String nonoWords[]={"like", "um", "uh"};
+        Pair<String, Integer> fillerCount[];
 
+        for(String word: answer.split(" ")){
+
+        }
+    }
     public void onFinalResponseReceived(final RecognitionResult response) {
         String finalResponse="";
         boolean isFinalDicationMessage = MODE == SpeechRecognitionMode.LongDictation &&
@@ -230,6 +251,8 @@ public class MainActivity extends Activity implements ISpeechRecognitionServerEv
                 finalResponse+=response.Results[i].DisplayText;
             }
             questionTextView.setText(finalResponse);
+            JavaSample test = new JavaSample();
+            test.execute(finalResponse);
         }
 
         if (isFinalDicationMessage) {
@@ -274,41 +297,55 @@ public class MainActivity extends Activity implements ISpeechRecognitionServerEv
         }
     }
 
-
-    private class JavaSample extends AsyncTask<String, String, String>
+    private class JavaSample extends AsyncTask<String, Void, Void>
     {
 
         @Override
-        protected String doInBackground(String... strings) {
+        protected Void doInBackground(String... strings) {
             HttpClient httpclient = HttpClients.createDefault();
 
             try
             {
-                Uri.Builder builder = new Uri.Builder();
-                builder.path("https://westus.api.cognitive.microsoft.com/text/analytics/v2.0/sentiment");
+                URIBuilder builder = new URIBuilder("https://westus.api.cognitive.microsoft.com/text/analytics/v2.0/sentiment");
 
-                Uri uri = builder.build();
-                HttpPost request = new HttpPost(uri.getPath());
+                URI uri = builder.build();
+                HttpPost request = new HttpPost(uri);
                 request.setHeader("Content-Type", "application/json");
                 request.setHeader("Ocp-Apim-Subscription-Key", getString(R.string.text_subscription_key));
+                request.setHeader("Accept", "application/json");
 
 
                 // Request body
-                StringEntity reqEntity = new StringEntity("{I love you}");
-                request.setEntity(reqEntity);
+                StringEntity se = null;
+                JSONObject params = new JSONObject();
+                JSONArray documents = new JSONArray();
+                JSONObject userresponse = new JSONObject();
+                userresponse.put("language", "en");
+                userresponse.put("id", 1);
+                userresponse.put("text", strings[0]);
+                documents.put(userresponse);
+                params.put("documents", documents);
+                se = new StringEntity(params.toString(), "UTF-8");
+                request.setEntity(se);
 
                 HttpResponse response = httpclient.execute(request);
                 HttpEntity entity = response.getEntity();
-
+                String jsonStr = EntityUtils.toString(entity);
+                JSONObject data = new JSONObject(jsonStr);
+                //String[] sentscore = gson.fromJson("documents", String[].class);
                 if (entity != null)
                 {
-                    Log.e("YO IT WORKS", EntityUtils.toString(entity));
+                    double score = data.getJSONArray("documents").getJSONObject(0).getDouble("score");
+                   System.out.println("FINALLY SUCCESS"+ score);
+                    gotoResults.putExtra("sentscore", score);
+                    getApplicationContext().startActivity(gotoResults);
                 }
             }
             catch (Exception e)
             {
-                Log.e("FAILED", e.getMessage());
+                System.out.println(e.getMessage());
             }
+            return null;
         }
     }
 
