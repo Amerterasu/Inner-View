@@ -24,25 +24,71 @@
 
     <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:background="@android:color/background_light"
+        android:orientation="vertical"
+        android:layout_gravity="clip_horizontal"
+        >
+
+        <ListView
+            android:id="@+id/keywords_listview"
+            android:layout_width="match_parent"
+            android:layout_height="406dp"
+            android:layout_alignParentTop="true"
+            android:layout_marginTop="59dp"
+            android:visibility="visible" />
+
+        <TextView
+            android:text="TextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/filler1_textView"
+            android:textSize="14sp"
+            android:textAlignment="center"
+            android:gravity="center_horizontal"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginEnd="24dp"
+            android:layout_alignBaseline="@+id/sentiment_textView"
+            android:layout_alignBottom="@+id/sentiment_textView"
+            android:layout_alignParentEnd="true" />
+
+        <TextView
+            android:text="TextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/filler2_textView"
+            android:textSize="14sp"
+            android:textAlignment="center"
+            android:layout_gravity="center_horizontal"
+            android:layout_alignBaseline="@+id/sentiment_textView"
+            android:layout_alignBottom="@+id/sentiment_textView"
+            android:layout_alignParentStart="true"
+            android:layout_marginStart="36dp" />
+
+        <TextView
+            android:text="TextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/filler3_textView"
+            android:textSize="14sp"
+            android:textAlignment="center"
+            android:layout_gravity="center_horizontal"
+            android:layout_above="@+id/sentiment_textView"
+            android:layout_centerHorizontal="true"
+            android:layout_marginBottom="20dp" />
 
         <TextView
             android:text="Sentiment"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_alignParentTop="true"
-            android:layout_centerHorizontal="true"
-            android:layout_marginTop="243dp"
-            android:id="@+id/sentiment_textView" />
+            android:id="@+id/sentiment_textView"
+            android:textSize="18sp"
+            android:layout_gravity="center_horizontal"
+            android:gravity="bottom|center"
+            android:layout_marginBottom="27dp"
+            android:layout_alignParentBottom="true"
+            android:layout_centerHorizontal="true" />
 
-        <TextView
-            android:text="Test"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_below="@+id/sentiment_textView"
-            android:layout_marginTop="26dp"
-            android:id="@+id/test_textview"
-            android:layout_alignStart="@+id/sentiment_textView" />
     </RelativeLayout>
 
 </android.support.design.widget.CoordinatorLayout>

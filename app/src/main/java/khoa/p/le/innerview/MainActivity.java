@@ -40,8 +40,10 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.support.v4.util.Pair;
 import android.util.Log;
+import android.view.SurfaceView;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
@@ -99,7 +101,7 @@ public class MainActivity extends Activity implements ISpeechRecognitionServerEv
     SpeechRecognitionMode MODE = SpeechRecognitionMode.ShortPhrase;
     public enum FinalResponseStatus { NotReceived, OK, Timeout }
     Intent gotoResults;
-
+    SurfaceView mSurfaceView;
     /**
      * Gets the primary subscription key
      */
@@ -152,6 +154,16 @@ public class MainActivity extends Activity implements ISpeechRecognitionServerEv
     private String getLongWaveFile() {
         return "batman.wav";
     }
+    static final int REQUEST_VIDEO_CAPTURE = 1;
+
+    private void dispatchTakeVideoIntent() {
+        Intent takeVideoIntent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
+        if (takeVideoIntent.resolveActivity(getPackageManager()) != null) {
+            startActivityForResult(takeVideoIntent, REQUEST_VIDEO_CAPTURE);
+        }
+    }
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -177,7 +189,6 @@ public class MainActivity extends Activity implements ISpeechRecognitionServerEv
      */
     private void StartButton_Click(View arg0) {
         this._startButton.setEnabled(false);
-
         this.m_waitSeconds =  200;
         if (this.micClient == null) {
                 this.micClient =
@@ -229,13 +240,44 @@ public class MainActivity extends Activity implements ISpeechRecognitionServerEv
             isReceivedResponse = FinalResponseStatus.Timeout;
         }
     }
-    private findFillers(String answer){
-        String nonoWords[]={"like", "um", "uh"};
-        Pair<String, Integer> fillerCount[];
+    class FillerWord{
+        private String word;
+        private int count;
+        public FillerWord(String word, int count){
+            this.word = word;
+            this.count=count;
+        }
+        public String getWord(){
+            return word;
+        }
+        public int getCount(){
+            return count;
+        }
+        public int inc(){
+            return ++count;
+        }
+    }
+    private void findFillers(String answer){
+        String nonoWords[]=new String[]{"like", "so", "yeah"};
+        FillerWord fillers[]= new FillerWord[3];
+
+        for(int i = 0; i < 3; i++){
+            FillerWord newWord = new FillerWord(nonoWords[i], 0);
+            fillers[i]=newWord;
+        }
 
         for(String word: answer.split(" ")){
-
+            for(int i = 0; i < 3; i++){
+                if(word.equals(fillers[i].getWord())){
+                    System.out.println(fillers[i].inc());
+                }
+            }
         }
+
+        for (FillerWord fillerword: fillers){
+            gotoResults.putExtra(fillerword.getWord(), fillerword.getCount());
+        }
+
     }
     public void onFinalResponseReceived(final RecognitionResult response) {
         String finalResponse="";
@@ -251,6 +293,9 @@ public class MainActivity extends Activity implements ISpeechRecognitionServerEv
                 finalResponse+=response.Results[i].DisplayText;
             }
             questionTextView.setText(finalResponse);
+            findFillers(finalResponse);
+            Topics thetopics = new Topics();
+            thetopics.execute(finalResponse);
             JavaSample test = new JavaSample();
             test.execute(finalResponse);
         }
@@ -294,6 +339,57 @@ public class MainActivity extends Activity implements ISpeechRecognitionServerEv
         if (!recording) {
             this.micClient.endMicAndRecognition();
             this._startButton.setEnabled(true);
+        }
+    }
+
+    private class Topics extends AsyncTask<String, Void, Void>{
+        @Override
+        protected Void doInBackground(String... strings) {
+            HttpClient httpClient = HttpClients.createDefault();
+
+            try{
+                URIBuilder builder = new URIBuilder("https://westus.api.cognitive.microsoft.com/text/analytics/v2.0/keyPhrases");
+
+                URI uri = builder.build();
+                HttpPost request = new HttpPost(uri);
+                request.setHeader("Content-Type", "application/json");
+                request.setHeader("Ocp-Apim-Subscription-Key", getString(R.string.text_subscription_key));
+
+                //Request body
+                StringEntity se = null;
+                JSONObject params = new JSONObject();
+                JSONArray documents = new JSONArray();
+                JSONObject userresponse = new JSONObject();
+                userresponse.put("language", "en");
+                userresponse.put("id", 1);
+                userresponse.put("text", strings[0]);
+                documents.put(userresponse);
+                params.put("documents", documents);
+                se = new StringEntity(params.toString(), "UTF-8");
+                request.setEntity(se);
+
+                HttpResponse response = httpClient.execute(request);
+                HttpEntity entity = response.getEntity();
+
+                String jsonStr = EntityUtils.toString(entity);
+
+                JSONObject obj = new JSONObject(jsonStr);
+
+                if(entity != null){
+                    ArrayList<String> keyWords = new ArrayList<String>();
+                    JSONArray jsonArray = obj.getJSONArray("documents").getJSONObject(0).getJSONArray("keyPhrases");
+                    if(jsonArray != null) {
+                        for (int i = 0; i < jsonArray.length(); i++) {
+                            keyWords.add(jsonArray.get(i).toString());
+                            Log.v("LIST ITEM", keyWords.get(i));
+                        }
+                    }
+                    gotoResults.putExtra("keywords", keyWords);
+                }
+            }catch(Exception e){
+                System.out.println(e.getMessage());
+            }
+            return null;
         }
     }
 
